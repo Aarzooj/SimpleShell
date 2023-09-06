@@ -7,11 +7,12 @@
 #include <pthread.h>
 #include <sys/wait.h>
 
-int create_process_and_run(char *command)
+int create_process_and_run(char *usr_cmd)
 {
     // In a real implementation, you would use fork/exec or system() to run the command.
     // Here, we'll just print the command and return a dummy status.
-    printf("Running command: %s\n", command);
+    // printf("Running command: %s\n", command);
+    char *path = (char *)malloc(256);
 
     // trying fork
     int status = fork();
@@ -21,14 +22,32 @@ int create_process_and_run(char *command)
     }
     else if (status == 0)
     {
+        snprintf(path, 256, "/%s/%s", "usr/bin", usr_cmd);
+        // char *path = "/usr/bin/ls";
+        char *user = getenv("USER");
+        char *relative_path = (char *)malloc(7 + strlen(user));
+        snprintf(relative_path, 7 + strlen(user), "/%s/%s", "home", user);
+        char *args_[] = {path, relative_path, NULL};
+        execv(path, args_);
         printf("child\n");
     }
     else
     {
+        int child_status;
+        wait(&child_status); // Wait for the child to complete
+        if (WIFEXITED(child_status))
+        {
+            int exit_code = WEXITSTATUS(child_status);
+            printf("Child process exited with status: %d\n", exit_code);
+        }
+        else
+        {
+            printf("Child process did not exit normally.\n");
+        }
         printf("parent\n");
     }
-    return 0;
-    // return status;
+    // return 0;
+    return status;
 }
 
 int launch(char *command)
@@ -38,15 +57,22 @@ int launch(char *command)
     return status;
 }
 
+char *read_user_input()
+{
+    char *input = (char *)malloc(256);
+    size_t buffsize = 0;
+    getline(&input, &buffsize, stdin);
+    return input;
+}
+
 void shell_loop()
 {
     int status;
     do
     {
         printf("iiitd@possum:~$ ");
-        char *command = NULL;
-        size_t bufsize = 0;
-        getline(&command, &bufsize, stdin);
+        char *command = read_user_input();
+
         char **args = (char **)malloc(256 * sizeof(char *));
         int countArgs = 0;
 
@@ -61,17 +87,9 @@ void shell_loop()
         //     printf("%s\n", args[i]);
         // }
 
-        // status = launch(command);
-        char *usr_cmd = args[0];
-        char *path = (char*)malloc(256);
-        snprintf(path, 256, "/%s/%s", "usr/bin",usr_cmd);
-        // char *path = "/usr/bin/ls";
-        char *user = getenv("USER");
-        char *relative_path = (char*)malloc(7+strlen(user));
-        snprintf(relative_path, 7+strlen(user), "/%s/%s", "home",user);
-        char *args_[] = {path, relative_path, NULL};
-        execv(path,args_);
-        break;
+        status = launch(args[0]);
+        // char *usr_cmd = args[0];
+        // break;
     } while (status);
 }
 
