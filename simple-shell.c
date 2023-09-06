@@ -61,7 +61,17 @@ void shell_loop()
         //     printf("%s\n", args[i]);
         // }
 
-        status = launch(command);
+        // status = launch(command);
+        char *usr_cmd = args[0];
+        char *path = (char*)malloc(256);
+        snprintf(path, 256, "/%s/%s", "usr/bin",usr_cmd);
+        // char *path = "/usr/bin/ls";
+        char *user = getenv("USER");
+        char *relative_path = (char*)malloc(7+strlen(user));
+        snprintf(relative_path, 7+strlen(user), "/%s/%s", "home",user);
+        char *args_[] = {path, relative_path, NULL};
+        execv(path,args_);
+        break;
     } while (status);
 }
 
