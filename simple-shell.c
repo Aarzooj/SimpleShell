@@ -7,13 +7,13 @@
 #include <pthread.h>
 #include <sys/wait.h>
 
-int create_process_and_run(char *usr_cmd)
+int create_process_and_run(char **args)
 {
     // In a real implementation, you would use fork/exec or system() to run the command.
     // Here, we'll just print the command and return a dummy status.
     // printf("Running command: %s\n", command);
-    char *path = (char *)malloc(256);
-
+    // char *path = (char *)malloc(256);
+    // printf("%s\n",usr_cmd);
     // trying fork
     int status = fork();
     if (status < 0)
@@ -22,13 +22,14 @@ int create_process_and_run(char *usr_cmd)
     }
     else if (status == 0)
     {
-        snprintf(path, 256, "/%s/%s", "usr/bin", usr_cmd);
-        // char *path = "/usr/bin/ls";
-        char *user = getenv("USER");
-        char *relative_path = (char *)malloc(7 + strlen(user));
-        snprintf(relative_path, 7 + strlen(user), "/%s/%s", "home", user);
-        char *args_[] = {path, relative_path, NULL};
-        execv(path, args_);
+        // snprintf(path, 256, "/%s/%s", "usr/bin", usr_cmd);
+        // // char *path = "/usr/bin/ls";
+        // char *user = getenv("USER");
+        // char *relative_path = (char *)malloc(7 + strlen(user));
+        // snprintf(relative_path, 7 + strlen(user), "/%s/%s", "home", user);
+        // char *args_[] = {path,"-a", relative_path, NULL};
+        // execv(path, args_);
+        execvp(args[0],args);
         printf("child\n");
     }
     else
@@ -50,10 +51,11 @@ int create_process_and_run(char *usr_cmd)
     return status;
 }
 
-int launch(char *command)
+int launch(char **args)
 {
     int status;
-    status = create_process_and_run(command);
+    // printf("%s\n",command);
+    status = create_process_and_run(args);
     return status;
 }
 
@@ -72,7 +74,8 @@ void shell_loop()
     {
         printf("iiitd@possum:~$ ");
         char *command = read_user_input();
-
+        command = strtok(command,"\n");
+        // printf("%s\n",command);
         char **args = (char **)malloc(256 * sizeof(char *));
         int countArgs = 0;
 
@@ -87,7 +90,7 @@ void shell_loop()
         //     printf("%s\n", args[i]);
         // }
 
-        status = launch(args[0]);
+        status = launch(args);
         // char *usr_cmd = args[0];
         // break;
     } while (status);
