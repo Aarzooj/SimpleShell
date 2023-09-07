@@ -73,29 +73,38 @@ char *read_user_input()
     }
 }
 
-char *strip(char *string){
-    char stripped[strlen(string)+1];
+char *strip(char *string)
+{
+    char stripped[strlen(string) + 1];
     int len = 0;
     int flag;
-    if (string[0] != ' '){
+    if (string[0] != ' ')
+    {
         flag = 1;
-    }else{
+    }
+    else
+    {
         flag = 0;
     }
     for (int i = 0; string[i] != '\0'; i++)
     {
-        if (string[i] != ' ' && flag == 0){
+        if (string[i] != ' ' && flag == 0)
+        {
             stripped[len++] = string[i];
             flag = 1;
-        }else if (flag == 1){
+        }
+        else if (flag == 1)
+        {
             stripped[len++] = string[i];
-        }else if (string[i] != ' '){
+        }
+        else if (string[i] != ' ')
+        {
             flag = 1;
         }
     }
     stripped[len] = '\0';
-    char *final_strip = (char*)malloc(256);
-    memcpy(final_strip,stripped,256);
+    char *final_strip = (char *)malloc(256);
+    memcpy(final_strip, stripped, 256);
     return final_strip;
 }
 
@@ -112,21 +121,26 @@ char **tokenize(char *command, const char delim[2])
     return args;
 }
 
-int pipe_process(char *command){
-    char **cmds = tokenize(command,"|");
+int pipe_process(char *command)
+{
+    char **cmds = tokenize(command, "|");
     int fd[2];
-    if (pipe(fd) == -1){
+    if (pipe(fd) == -1)
+    {
         perror("error in piping");
     }
     int pid1 = fork();
-    if (pid1<0){
+    if (pid1 < 0)
+    {
         perror("error");
-    }else if (pid1 == 0){
-        char **args = tokenize(cmds[0]," ");
+    }
+    else if (pid1 == 0)
+    {
+        char **args = tokenize(cmds[0], " ");
         close(fd[0]);
-        dup2(fd[1],STDOUT_FILENO);
-        int check = execvp(args[0], args);
+        dup2(fd[1], STDOUT_FILENO);
         close(fd[1]);
+        int check = execvp(args[0], args);
         if (check == -1)
         {
             printf("Error running execvp system call\n");
@@ -134,14 +148,17 @@ int pipe_process(char *command){
         }
     }
     int pid2 = fork();
-    if (pid2<0){
+    if (pid2 < 0)
+    {
         perror("error");
-    }else if (pid2 == 0){
-        char **args = tokenize(cmds[1]," ");
+    }
+    else if (pid2 == 0)
+    {
+        char **args = tokenize(cmds[1], " ");
         close(fd[1]);
-        dup2(fd[0],STDIN_FILENO);
-        int check = execvp(args[0], args);
+        dup2(fd[0], STDIN_FILENO);
         close(fd[0]);
+        int check = execvp(args[0], args);
         if (check == -1)
         {
             printf("Error running execvp system call\n");
@@ -150,9 +167,9 @@ int pipe_process(char *command){
     }
     close(fd[0]);
     close(fd[1]);
-    waitpid(pid1,NULL,0);
-    waitpid(pid2,NULL,0);
-    return 0; 
+    waitpid(pid1, NULL, 0);
+    waitpid(pid2, NULL, 0);
+    return 0;
 }
 
 void shell_loop()
@@ -167,17 +184,19 @@ void shell_loop()
 
         char *command = read_user_input();
         command = strtok(command, "\n");
-        
-        if (strchr(command,'|')){
+
+        if (strchr(command, '|'))
+        {
             // printf("pipe exists\n");
             status = pipe_process(command);
-        }
+        }else{
         char **args = tokenize(command, " ");
         // for (int i = 0; args[i] != NULL; i++)
         // {
         //     printf("%s\n", args[i]);
         // }
         status = launch(args);
+        }
     } while (status);
 }
 
