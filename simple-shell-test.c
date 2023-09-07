@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <signal.h>
 
 #define INPUT_SiZE 256
 #define HISTORY_SIZE 100
@@ -245,8 +246,7 @@ int launch_pipe(char *command)
 }
 
 void shell_loop()
-{
-    int status;
+{   int status;
     do
     {
         char *user = getenv("USER");
