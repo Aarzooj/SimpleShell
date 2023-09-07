@@ -72,7 +72,6 @@ int create_process_and_run(char **args)
             printf("Error running execvp system call\n");
             return -1;
         }
-        // printf("child\n");
     }
     else
     {
@@ -81,15 +80,13 @@ int create_process_and_run(char **args)
         if (WIFEXITED(child_status))
         {
             int exit_code = WEXITSTATUS(child_status);
-            printf("Child process exited with status: %d\n", exit_code);
+            // printf("Child process exited with status: %d\n", exit_code);
         }
         else
         {
             printf("Child process did not exit normally.\n");
         }
-        // printf("parent\n");
     }
-    // return 0;
     return status;
 }
 
@@ -252,7 +249,6 @@ void shell_loop()
         {
             if (strchr(command, '|'))
             {
-                // printf("pipe exists\n");
                 strcpy(history.record[history.historyCount].command, tmp);
                 history.record[history.historyCount].start_time = time(NULL);
                 status = pipe_process(command);
