@@ -42,8 +42,8 @@ void displayTerminate()
 
 void displayHistory()
 {
-
-    for (int i = 0; i < history.historyCount; i++)
+    history.record[history.historyCount].process_pid = getpid();
+    for (int i = 0; i < history.historyCount + 1; i++)
     {
         printf("%d  %s\n", i + 1, history.record[i].command);
     }
@@ -58,13 +58,6 @@ int create_process_and_run(char **args)
     }
     else if (status == 0)
     {
-        // snprintf(path, 256, "/%s/%s", "usr/bin", usr_cmd);
-        // // char *path = "/usr/bin/ls";
-        // char *user = getenv("USER");
-        // char *relative_path = (char *)malloc(7 + strlen(user));
-        // snprintf(relative_path, 7 + strlen(user), "/%s/%s", "home", user);
-        // char *args_[] = {path,"-a", relative_path, NULL};
-        // execv(path, args_);
         history.record[history.historyCount].process_pid = getpid();
         int check = execvp(args[0], args);
         if (check == -1)
@@ -160,60 +153,95 @@ char **tokenize(char *command, const char delim[2])
     return args;
 }
 
-int pipe_process(char *command)
+int pipe_process(char **cmds, int pipes)
 {
-    char **cmds = tokenize(command, "|");
-    int fd[2];
-    if (pipe(fd) == -1)
+    int fd[pipes][2];
+    for (int i = 0; i < pipes; i++)
     {
-        perror("error in piping");
-    }
-    int pid1 = fork();
-    if (pid1 < 0)
-    {
-        perror("error");
-    }
-    else if (pid1 == 0)
-    {
-        char **args = tokenize(cmds[0], " ");
-        close(fd[0]);
-        dup2(fd[1], STDOUT_FILENO);
-        close(fd[1]);
-        int check = execvp(args[0], args);
-        if (check == -1)
+        if (pipe(fd[i]) == -1)
         {
-            printf("Error running execvp system call\n");
-            return -1;
+            perror("Piping failed\n");
         }
     }
-    int pid2 = fork();
-    if (pid2 < 0)
+    int pid;
+    for (int i = 0; i < pipes + 1; i++)
     {
-        perror("error");
-    }
-    else if (pid2 == 0)
-    {
-        char **args = tokenize(cmds[1], " ");
-        close(fd[1]);
-        dup2(fd[0], STDIN_FILENO);
-        close(fd[0]);
+        char **args = tokenize(cmds[i], " ");
+        pid = fork();
         history.record[history.historyCount].process_pid = getpid();
-        int check = execvp(args[0], args);
-        if (check == -1)
+        if (pid < 0)
         {
-            printf("Error running execvp system call\n");
-            return -1;
+            perror("error\n");
+        }
+        else if (pid == 0)
+        {
+            if (i > 0)
+            {
+                for (int j = 0; j < pipes; j++)
+                {
+                    if (j != i)
+                    {
+                        close(fd[j][1]);
+                    }
+                    if (j != i - 1)
+                    {
+                        close(fd[j][0]);
+                    }
+                }
+                dup2(fd[i - 1][0], STDIN_FILENO);
+                close(fd[i - 1][0]);
+            }
+            if (i < pipes)
+            {
+                dup2(fd[i][1], STDOUT_FILENO);
+                close(fd[i][1]);
+            }
+            int check = execvp(args[0], args);
+            if (check == -1)
+            {
+                printf("Error running execvp system call\n");
+                return -1;
+            }
+        }
+        else
+        {
+            if (i > 0)
+            {
+                close(fd[i - 1][0]);
+            }
+            if (i < pipes)
+            {
+                close(fd[i][1]);
+            }
         }
     }
-    close(fd[0]);
-    close(fd[1]);
-    waitpid(pid1, NULL, 0);
-    waitpid(pid2, NULL, 0);
+
+    for (int i = 0; i < pipes + 1; i++)
+    {
+        wait(NULL);
+    }
+    return pid;
+}
+
+int launch_pipe(char *command)
+{
+    int status;
+    int count = 0;
+    for (int i = 0; command[i] != '\0'; i++)
+    {
+        if (command[i] == '|')
+        {
+            count++;
+        }
+    }
+    char **cmds = tokenize(command, "|");
+    status = pipe_process(cmds, count);
     history.record[history.historyCount].end_time = time(NULL);
+
     history.record[history.historyCount].duration = difftime(
         history.record[history.historyCount].end_time,
         history.record[history.historyCount].start_time);
-    return pid2;
+    return status;
 }
 
 void shell_loop()
@@ -238,7 +266,15 @@ void shell_loop()
         {
             if (history.historyCount > 0)
             {
+                strcpy(history.record[history.historyCount].command, tmp);
+                history.record[history.historyCount].start_time = time(NULL);
                 displayHistory();
+                history.record[history.historyCount].end_time = time(NULL);
+
+                history.record[history.historyCount].duration = difftime(
+                    history.record[history.historyCount].end_time,
+                    history.record[history.historyCount].start_time);
+                history.historyCount++;
             }
             else
             {
@@ -251,13 +287,12 @@ void shell_loop()
             {
                 strcpy(history.record[history.historyCount].command, tmp);
                 history.record[history.historyCount].start_time = time(NULL);
-                status = pipe_process(command);
+                status = launch_pipe(command);
                 history.historyCount++;
             }
             else
             {
                 char **args = tokenize(command, " ");
-
                 strcpy(history.record[history.historyCount].command, tmp);
                 history.record[history.historyCount].start_time = time(NULL);
 
