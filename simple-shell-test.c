@@ -6,6 +6,48 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <sys/wait.h>
+#include <time.h>
+
+#define INPUT_SiZE 256
+#define HISTORY_SIZE 100
+
+struct CommandParameter
+{
+    char command[INPUT_SiZE];
+    time_t start_time;
+    time_t end_time;
+    double duration;
+    pid_t process_pid;
+};
+
+struct CommandHistory
+{
+    struct CommandParameter record[HISTORY_SIZE];
+    int historyCount;
+};
+
+struct CommandHistory history;
+
+void displayTerminate()
+{
+
+    for (int i = 0; i < history.historyCount; i++)
+    {
+        struct CommandParameter record = history.record[i];
+        printf("%s %d\n", record.command, record.process_pid);
+        printf("%s %s %.2lf\n", ctime(&record.start_time), ctime(&record.end_time), record.duration);
+        printf("--------------------------------\n");
+    }
+}
+
+void displayHistory()
+{
+
+    for (int i = 0; i < history.historyCount; i++)
+    {
+        printf("%d  %s\n", i + 1, history.record[i].command);
+    }
+}
 
 int create_process_and_run(char **args)
 {
@@ -23,7 +65,7 @@ int create_process_and_run(char **args)
         // snprintf(relative_path, 7 + strlen(user), "/%s/%s", "home", user);
         // char *args_[] = {path,"-a", relative_path, NULL};
         // execv(path, args_);
-
+        history.record[history.historyCount].process_pid = getpid();
         int check = execvp(args[0], args);
         if (check == -1)
         {
@@ -158,6 +200,7 @@ int pipe_process(char *command)
         close(fd[1]);
         dup2(fd[0], STDIN_FILENO);
         close(fd[0]);
+        history.record[history.historyCount].process_pid = getpid();
         int check = execvp(args[0], args);
         if (check == -1)
         {
@@ -169,7 +212,11 @@ int pipe_process(char *command)
     close(fd[1]);
     waitpid(pid1, NULL, 0);
     waitpid(pid2, NULL, 0);
-    return 0;
+    history.record[history.historyCount].end_time = time(NULL);
+    history.record[history.historyCount].duration = difftime(
+        history.record[history.historyCount].end_time,
+        history.record[history.historyCount].start_time);
+    return pid2;
 }
 
 void shell_loop()
@@ -184,24 +231,56 @@ void shell_loop()
 
         char *command = read_user_input();
         command = strtok(command, "\n");
-
-        if (strchr(command, '|'))
+        char *tmp = strdup(command);
+        if (tmp == NULL)
         {
-            // printf("pipe exists\n");
-            status = pipe_process(command);
-        }else{
-        char **args = tokenize(command, " ");
-        // for (int i = 0; args[i] != NULL; i++)
-        // {
-        //     printf("%s\n", args[i]);
-        // }
-        status = launch(args);
+            perror("Error in strdup");
+            exit(EXIT_FAILURE);
+        }
+        if (strstr(command, "history"))
+        {
+            if (history.historyCount > 0)
+            {
+                displayHistory();
+            }
+            else
+            {
+                printf("No command in the history\n");
+            }
+        }
+        else
+        {
+            if (strchr(command, '|'))
+            {
+                // printf("pipe exists\n");
+                strcpy(history.record[history.historyCount].command, tmp);
+                history.record[history.historyCount].start_time = time(NULL);
+                status = pipe_process(command);
+                history.historyCount++;
+            }
+            else
+            {
+                char **args = tokenize(command, " ");
+
+                strcpy(history.record[history.historyCount].command, tmp);
+                history.record[history.historyCount].start_time = time(NULL);
+
+                status = launch(args);
+
+                history.record[history.historyCount].end_time = time(NULL);
+
+                history.record[history.historyCount].duration = difftime(
+                    history.record[history.historyCount].end_time,
+                    history.record[history.historyCount].start_time);
+                history.historyCount++;
+            }
         }
     } while (status);
 }
 
 int main()
 {
+    history.historyCount = 0;
     shell_loop();
     return 0;
 }
