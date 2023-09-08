@@ -41,6 +41,11 @@ void displayTerminate()
     }
 }
 
+static void my_handler(int signum) {
+    displayTerminate();
+    exit(1);
+}
+
 void displayHistory()
 {
     history.record[history.historyCount].process_pid = getpid();
@@ -246,7 +251,12 @@ int launch_pipe(char *command)
 }
 
 void shell_loop()
-{   int status;
+{   
+    if (signal(SIGINT, my_handler) == SIG_ERR) {
+        perror("Signal handling failed");
+    }
+    
+    int status;
     do
     {
         char *user = getenv("USER");
