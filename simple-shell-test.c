@@ -369,6 +369,7 @@ void shell_loop()
 
         char *command = read_user_input();
         if (strlen(command) == 0 || strcmp(command , "\n") == 0){
+            status = 1;
             continue;
         }
         command = strtok(command, "\n");
@@ -380,6 +381,7 @@ void shell_loop()
             exit(EXIT_FAILURE);
         }
         if (isInvalidCommand){
+            status = 1;
             strcpy(history.record[history.historyCount].command, tmp);
             history.record[history.historyCount].start_time = time(NULL);
             history.record[history.historyCount].end_time = time(NULL);
@@ -405,6 +407,7 @@ void shell_loop()
             }
             else
             {
+                status = 1;
                 printf("No command in the history\n");
                 continue;
             }
