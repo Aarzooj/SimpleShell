@@ -1,13 +1,9 @@
 #include <stdio.h>
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdint.h>
-#include <pthread.h>
 #include <sys/wait.h>
 #include <time.h>
-#include <signal.h>
 #include <stdbool.h>
 
 #define INPUT_SiZE 256
@@ -410,6 +406,7 @@ void shell_loop()
             else
             {
                 printf("No command in the history\n");
+                continue;
             }
         }
         else
