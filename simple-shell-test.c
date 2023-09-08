@@ -180,7 +180,6 @@ int pipe_process(char **cmds, int pipes)
     {
         char **args = tokenize(cmds[i], " ");
         pid = fork();
-        history.record[history.historyCount].process_pid = getpid();
         if (pid < 0)
         {
             perror("error\n");
@@ -248,6 +247,10 @@ int launch_pipe(char *command)
     }
     char **cmds = tokenize(command, "|");
     status = pipe_process(cmds, count);
+    if (status > 0)
+    {
+        history.record[history.historyCount].process_pid = status; 
+    }
     history.record[history.historyCount].end_time = time(NULL);
 
     history.record[history.historyCount].duration = difftime(
