@@ -35,13 +35,14 @@ void displayTerminate()
     for (int i = 0; i < history.historyCount; i++)
     {
         struct CommandParameter record = history.record[i];
-        printf("%s %d\n", record.command, record.process_pid);
-        printf("%s %s %.2lf\n", ctime(&record.start_time), ctime(&record.end_time), record.duration);
+        printf("%s\nProcess PID: %d\n", record.command, record.process_pid);
+        printf("Start time: %sEnd Time: %sProcess Duration: %.2lf\n", ctime(&record.start_time), ctime(&record.end_time), record.duration);
         printf("--------------------------------\n");
     }
 }
 
-static void my_handler(int signum) {
+static void my_handler(int signum)
+{
     printf("\n");
     displayTerminate();
     exit(1);
@@ -252,8 +253,9 @@ int launch_pipe(char *command)
 }
 
 void shell_loop()
-{   
-    if (signal(SIGINT, my_handler) == SIG_ERR) {
+{
+    if (signal(SIGINT, my_handler) == SIG_ERR)
+    {
         perror("Signal handling failed");
     }
 
