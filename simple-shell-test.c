@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <signal.h>
+#include <stdbool.h>
 
 #define INPUT_SiZE 256
 #define HISTORY_SIZE 100
@@ -37,11 +38,11 @@ void displayTerminate()
     for (int i = 0; i < history.historyCount; i++)
     {
         struct CommandParameter record = history.record[i];
-        struct tm *start_time_info = localtime(&record.start_time);
         char start_time_buffer[80];
-        strftime(start_time_buffer, sizeof(start_time_buffer), "%Y-%m-%d %H:%M:%S", start_time_info);
-        struct tm *end_time_info = localtime(&record.end_time);
         char end_time_buffer[80];
+        struct tm *start_time_info = localtime(&record.start_time);
+        struct tm *end_time_info = localtime(&record.end_time);
+        strftime(start_time_buffer, sizeof(start_time_buffer), "%Y-%m-%d %H:%M:%S", start_time_info);
         strftime(end_time_buffer, sizeof(end_time_buffer), "%Y-%m-%d %H:%M:%S", end_time_info);
         printf("%s\nProcess PID: %d\n", record.command, record.process_pid);
         printf("Start time: %s\nEnd Time: %s\nProcess Duration: %f\n", start_time_buffer, end_time_buffer, record.duration);
@@ -117,6 +118,10 @@ int launch(char **args)
 char *read_user_input()
 {
     char *input = (char *)malloc(256);
+    if (input == NULL){
+        perror("Error in malloc");
+        exit(EXIT_FAILURE);
+    }
     size_t size = 0;
     int read = getline(&input, &size, stdin);
     if (read != -1)
@@ -245,7 +250,6 @@ int pipe_process(char **cmds, int pipes)
             }
         }
     }
-
     for (int i = 0; i < pipes + 1; i++)
     {
         wait(NULL);
@@ -284,11 +288,10 @@ int launch_pipe(char *command)
 
 int launch_background(char **args)
 {
-    int status;
     pid_t pid = fork();
-    if (pid == -1)
+    if (pid < 0)
     {
-        perror("fork");
+        perror("fork error");
         exit(EXIT_FAILURE);
     }
 
@@ -296,9 +299,11 @@ int launch_background(char **args)
     {
         // This is the child process
         // Execute the command in the background
-        execvp(args[0], args);
-        perror("execvp");
-        exit(EXIT_FAILURE);
+        int check = execvp(args[0], args);
+        if (check == -1){
+            perror("Error running execvp system call\n");
+            exit(EXIT_FAILURE);
+        }
     }
     else
     {
@@ -330,28 +335,64 @@ void handle_sigchld(int signum)
     }
 }
 
+bool validate_command(char *command) {
+    if (strchr(command, '\\') || strchr(command, '\"') || strchr(command, '\'')) {
+        return true; 
+    }
+    return false; 
+}
+
+
 void shell_loop()
 {
     if (signal(SIGINT, my_handler) == SIG_ERR)
     {
-        perror("Signal handling failed");
+        perror("SIGINT handling failed");
     }
-    signal(SIGCHLD, handle_sigchld);
+    if (signal(SIGCHLD, handle_sigchld) == SIG_ERR)
+    {
+        perror("SIGCHLD handling failed");
+    }
     int status;
     do
     {
         char *user = getenv("USER");
-        char host[256];
+        if (user == NULL)
+        {
+            perror("USER environment variable not declared");
+            exit(1);
+        }
+        char host[INPUT_SiZE];
         int hostname = gethostname(host, sizeof(host));
+        if (hostname == -1)
+        {
+            perror("gethostname");
+            exit(1);
+        }
         printf("%s@%s~$ ", user, host);
 
         char *command = read_user_input();
+        if (strlen(command) == 0 || strcmp(command , "\n") == 0){
+            continue;
+        }
         command = strtok(command, "\n");
+        bool isInvalidCommand = validate_command(command);
         char *tmp = strdup(command);
         if (tmp == NULL)
         {
             perror("Error in strdup");
             exit(EXIT_FAILURE);
+        }
+        if (isInvalidCommand){
+            strcpy(history.record[history.historyCount].command, tmp);
+            history.record[history.historyCount].start_time = time(NULL);
+            history.record[history.historyCount].end_time = time(NULL);
+            history.record[history.historyCount].duration = difftime(
+                    history.record[history.historyCount].end_time,
+                    history.record[history.historyCount].start_time);
+                history.historyCount++;
+            printf("Invalid Command : includes quotes/backslach\n");
+            continue;
         }
         if (strstr(command, "history"))
         {
@@ -361,7 +402,6 @@ void shell_loop()
                 history.record[history.historyCount].start_time = time(NULL);
                 displayHistory();
                 history.record[history.historyCount].end_time = time(NULL);
-
                 history.record[history.historyCount].duration = difftime(
                     history.record[history.historyCount].end_time,
                     history.record[history.historyCount].start_time);
