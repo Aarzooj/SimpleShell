@@ -12,6 +12,8 @@
 #define INPUT_SiZE 256
 #define HISTORY_SIZE 100
 
+int bgProcess = 0;
+
 struct CommandParameter
 {
     char command[INPUT_SiZE];
@@ -166,6 +168,13 @@ char **tokenize(char *command, const char delim[2])
         args[count++] = strip(token);
         token = strtok(NULL, delim);
     }
+    if (count > 0 && strcmp(args[count - 1], "&") == 0 && strcmp(delim, " ") == 0)
+    {
+        bgProcess = 1;
+        free(args[count - 1]); // Remove the "&" from the args list
+        args[count - 1] = NULL;
+        count--;
+    }
     return args;
 }
 
@@ -267,13 +276,52 @@ int launch_pipe(char *command)
     return status;
 }
 
+int launch_background(char **args)
+{
+    int status;
+    pid_t pid = fork();
+
+    if (pid == -1)
+    {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pid == 0)
+    {
+        // This is the child process
+        // Execute the command in the background
+        execvp(args[0], args);
+        perror("execvp");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        // This is the parent process
+        printf("Background process started with PID %d\n", pid);
+    }
+
+    return pid;
+}
+
+void handle_sigchld(int signum)
+{
+    int status;
+    pid_t pid;
+
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+    {
+        printf("Background process with PID %d terminated\n", pid);
+    }
+}
+
 void shell_loop()
 {
     if (signal(SIGINT, my_handler) == SIG_ERR)
     {
         perror("Signal handling failed");
     }
-
+    signal(SIGCHLD, handle_sigchld);
     int status;
     do
     {
@@ -323,9 +371,14 @@ void shell_loop()
                 char **args = tokenize(command, " ");
                 strcpy(history.record[history.historyCount].command, tmp);
                 history.record[history.historyCount].start_time = time(NULL);
-
-                status = launch(args);
-
+                if (bgProcess)
+                {
+                    status = launch_background(args);
+                }
+                else
+                {
+                    status = launch(args);
+                }
                 history.record[history.historyCount].end_time = time(NULL);
 
                 history.record[history.historyCount].duration = difftime(
@@ -334,6 +387,7 @@ void shell_loop()
                 history.historyCount++;
             }
         }
+        bgProcess = 0;
     } while (status);
 }
 
