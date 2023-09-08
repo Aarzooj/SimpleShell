@@ -38,11 +38,11 @@ void displayTerminate()
     for (int i = 0; i < history.historyCount; i++)
     {
         struct CommandParameter record = history.record[i];
-        char start_time_buffer[80];
-        char end_time_buffer[80];
         struct tm *start_time_info = localtime(&record.start_time);
-        struct tm *end_time_info = localtime(&record.end_time);
+        char start_time_buffer[80];
         strftime(start_time_buffer, sizeof(start_time_buffer), "%Y-%m-%d %H:%M:%S", start_time_info);
+        struct tm *end_time_info = localtime(&record.end_time);
+        char end_time_buffer[80];
         strftime(end_time_buffer, sizeof(end_time_buffer), "%Y-%m-%d %H:%M:%S", end_time_info);
         printf("%s\nProcess PID: %d\n", record.command, record.process_pid);
         printf("Start time: %s\nEnd Time: %s\nProcess Duration: %f\n", start_time_buffer, end_time_buffer, record.duration);
@@ -60,7 +60,7 @@ static void my_handler(int signum)
 void displayHistory()
 {
     history.record[history.historyCount].process_pid = getpid();
-    for (int i = 0; i < history.historyCount; i++)
+    for (int i = 0; i < history.historyCount + 1; i++)
     {
         printf("%d  %s\n", i + 1, history.record[i].command);
     }
