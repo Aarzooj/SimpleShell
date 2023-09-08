@@ -36,7 +36,7 @@ void displayTerminate()
     {
         struct CommandParameter record = history.record[i];
         printf("%s\nProcess PID: %d\n", record.command, record.process_pid);
-        printf("Start time: %sEnd Time: %sProcess Duration: %.2lf\n", ctime(&record.start_time), ctime(&record.end_time), record.duration);
+        printf("Start time: %sEnd Time: %sProcess Duration: %f\n", ctime(&record.start_time), ctime(&record.end_time), record.duration);
         printf("--------------------------------\n");
     }
 }
