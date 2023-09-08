@@ -66,7 +66,7 @@ int create_process_and_run(char **args)
     }
     else if (status == 0)
     {
-        history.record[history.historyCount].process_pid = getpid();
+        
         int check = execvp(args[0], args);
         if (check == -1)
         {
@@ -95,6 +95,10 @@ int launch(char **args)
 {
     int status;
     status = create_process_and_run(args);
+     if (status > 0)
+    {
+        history.record[history.historyCount].process_pid = status; 
+    }
     return status;
 }
 
