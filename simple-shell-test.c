@@ -66,7 +66,7 @@ int create_process_and_run(char **args)
     }
     else if (status == 0)
     {
-        
+
         int check = execvp(args[0], args);
         if (check == -1)
         {
@@ -95,9 +95,13 @@ int launch(char **args)
 {
     int status;
     status = create_process_and_run(args);
-     if (status > 0)
+    if (status > 0)
     {
-        history.record[history.historyCount].process_pid = status; 
+        history.record[history.historyCount].process_pid = status;
+    }
+    else
+    {
+        history.record[history.historyCount].process_pid = 0;
     }
     return status;
 }
@@ -249,7 +253,11 @@ int launch_pipe(char *command)
     status = pipe_process(cmds, count);
     if (status > 0)
     {
-        history.record[history.historyCount].process_pid = status; 
+        history.record[history.historyCount].process_pid = status;
+    }
+    else
+    {
+        history.record[history.historyCount].process_pid = 0;
     }
     history.record[history.historyCount].end_time = time(NULL);
 
