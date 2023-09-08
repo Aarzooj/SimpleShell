@@ -318,11 +318,15 @@ void handle_sigchld(int signum)
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
     {
         // printf("Background process with PID %d terminated\n", pid);
-        history.record[history.historyCount].end_time = time(NULL);
+        for (int i = 0; i < history.historyCount; i++){
+            if (history.record[i].process_pid == pid){
+        history.record[i].end_time = time(NULL);
 
-        history.record[history.historyCount].duration = difftime(
-            history.record[history.historyCount].end_time,
-            history.record[history.historyCount].start_time);
+        history.record[i].duration = difftime(
+            history.record[i].end_time,
+            history.record[i].start_time);
+            }
+        }
     }
 }
 
