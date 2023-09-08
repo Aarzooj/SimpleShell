@@ -116,6 +116,7 @@ char *read_user_input()
     char *input = (char *)malloc(256);
     if (input == NULL){
         perror("Error in malloc");
+        free(input);
         exit(EXIT_FAILURE);
     }
     size_t size = 0;
