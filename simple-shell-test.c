@@ -42,6 +42,7 @@ void displayTerminate()
 }
 
 static void my_handler(int signum) {
+    printf("\n");
     displayTerminate();
     exit(1);
 }
@@ -49,7 +50,7 @@ static void my_handler(int signum) {
 void displayHistory()
 {
     history.record[history.historyCount].process_pid = getpid();
-    for (int i = 0; i < history.historyCount + 1; i++)
+    for (int i = 0; i < history.historyCount; i++)
     {
         printf("%d  %s\n", i + 1, history.record[i].command);
     }
@@ -255,7 +256,7 @@ void shell_loop()
     if (signal(SIGINT, my_handler) == SIG_ERR) {
         perror("Signal handling failed");
     }
-    
+
     int status;
     do
     {
