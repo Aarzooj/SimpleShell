@@ -33,12 +33,18 @@ struct CommandHistory history;
 
 void displayTerminate()
 {
-
+    printf("--------------------------------\n");
     for (int i = 0; i < history.historyCount; i++)
     {
         struct CommandParameter record = history.record[i];
+        struct tm *start_time_info = localtime(&record.start_time);
+        char start_time_buffer[80];
+        strftime(start_time_buffer, sizeof(start_time_buffer), "%Y-%m-%d %H:%M:%S", start_time_info);
+        struct tm *end_time_info = localtime(&record.end_time);
+        char end_time_buffer[80];
+        strftime(end_time_buffer, sizeof(end_time_buffer), "%Y-%m-%d %H:%M:%S", end_time_info);
         printf("%s\nProcess PID: %d\n", record.command, record.process_pid);
-        printf("Start time: %sEnd Time: %sProcess Duration: %f\n", ctime(&record.start_time), ctime(&record.end_time), record.duration);
+        printf("Start time: %s\nEnd Time: %s\nProcess Duration: %f\n", start_time_buffer, end_time_buffer, record.duration);
         printf("--------------------------------\n");
     }
 }
@@ -280,7 +286,6 @@ int launch_background(char **args)
 {
     int status;
     pid_t pid = fork();
-
     if (pid == -1)
     {
         perror("fork");
@@ -298,7 +303,8 @@ int launch_background(char **args)
     else
     {
         // This is the parent process
-        printf("Background process started with PID %d\n", pid);
+        // printf("Background process started with PID %d\n", pid);
+        history.record[history.historyCount].process_pid = pid;
     }
 
     return pid;
@@ -311,7 +317,12 @@ void handle_sigchld(int signum)
 
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
     {
-        printf("Background process with PID %d terminated\n", pid);
+        // printf("Background process with PID %d terminated\n", pid);
+        history.record[history.historyCount].end_time = time(NULL);
+
+        history.record[history.historyCount].duration = difftime(
+            history.record[history.historyCount].end_time,
+            history.record[history.historyCount].start_time);
     }
 }
 
