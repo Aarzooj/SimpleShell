@@ -8,6 +8,9 @@
 
 #define INPUT_SIZE 256
 #define HISTORY_SIZE 100
+#define MAX_BGPROCESS 5
+
+pid_t running_bg_process[MAX_BGPROCESS] = {0};
 
 int bgProcess = 0;
 
@@ -62,6 +65,38 @@ void displayHistory()
     }
 }
 
+int append(pid_t pid)
+{
+    int added = -1;
+    if (running_bg_process[0] == 0 && running_bg_process[1] == 0 && running_bg_process[2] == 0 && running_bg_process[3] == 0 && running_bg_process[4] == 0)
+    {
+        added = 0;
+        running_bg_process[0] = pid;
+        return added;
+    }
+    for (int i = MAX_BGPROCESS - 2; i >= 0; i--)
+    {
+        if (running_bg_process[i] != 0)
+        {
+            running_bg_process[i + 1] = pid;
+            added = i + 1;
+        }
+    }
+    return added;
+}
+
+pid_t pop(pid_t pid)
+{
+    for (int i = 0; i < MAX_BGPROCESS; i++)
+    {
+        if (running_bg_process[i] == pid)
+        {
+            running_bg_process[i] = 0;
+            return i;
+        }
+    }
+}
+
 int create_process_and_run(char **args)
 {
     int status = fork();
@@ -97,8 +132,16 @@ int create_process_and_run(char **args)
         }
         else
         {
-            history.record[history.historyCount].process_pid = status;
-            printf("[1] %d\n",status);
+            int order = append(status);
+            if (order != -1)
+            {
+                history.record[history.historyCount].process_pid = status;
+                printf("[%d] %d\n", order + 1, status);
+            }
+            else
+            {
+                printf("No more background processes can be added");
+            }
         }
     }
     return status;
@@ -137,6 +180,7 @@ char *read_user_input()
     else
     {
         perror("Error while reading line\n");
+        free(input);
     }
 }
 
@@ -310,8 +354,11 @@ void handle_sigchld(int signum)
                 history.record[i].duration = difftime(
                     history.record[i].end_time,
                     history.record[i].start_time);
-                    printf("\n[1]+ Done                    %s\n",history.record[i].command);
-                    break;
+                int order = pop(pid);
+                char *tmp = history.record[i].command;
+                tmp = strtok(tmp, "&");
+                printf("\n[%d]+ Done                    %s\n", order + 1, tmp);
+                break;
             }
         }
     }
