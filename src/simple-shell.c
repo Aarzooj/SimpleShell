@@ -6,14 +6,14 @@
 #include <time.h>
 #include <stdbool.h>
 
-#define INPUT_SiZE 256
+#define INPUT_SIZE 256
 #define HISTORY_SIZE 100
 
 int bgProcess = 0;
 
 struct CommandParameter
 {
-    char command[INPUT_SiZE];
+    char command[INPUT_SIZE];
     time_t start_time;
     time_t end_time;
     double duration;
@@ -81,16 +81,24 @@ int create_process_and_run(char **args)
     }
     else
     {
-        int child_status;
-        wait(&child_status); // Wait for the child to complete
-        if (WIFEXITED(child_status))
+        if (!(bgProcess))
         {
-            int exit_code = WEXITSTATUS(child_status);
-            // printf("Child process exited with status: %d\n", exit_code);
+            int child_status;
+            wait(&child_status); // Wait for the child to complete
+            if (WIFEXITED(child_status))
+            {
+                int exit_code = WEXITSTATUS(child_status);
+                // printf("Child process exited with status: %d\n", exit_code);
+            }
+            else
+            {
+                printf("Child process did not exit normally.\n");
+            }
         }
         else
         {
-            printf("Child process did not exit normally.\n");
+            history.record[history.historyCount].process_pid = status;
+            printf("[1] %d\n",status);
         }
     }
     return status;
@@ -113,9 +121,11 @@ int launch(char **args)
 
 char *read_user_input()
 {
-    char *input = (char *)malloc(256);
-    if (input == NULL){
+    char *input = (char *)malloc(INPUT_SIZE);
+    if (input == NULL)
+    {
         perror("Error in malloc");
+        free(input);
         exit(EXIT_FAILURE);
     }
     size_t size = 0;
@@ -160,14 +170,14 @@ char *strip(char *string)
         }
     }
     stripped[len] = '\0';
-    char *final_strip = (char *)malloc(256);
-    memcpy(final_strip, stripped, 256);
+    char *final_strip = (char *)malloc(INPUT_SIZE);
+    memcpy(final_strip, stripped, INPUT_SIZE);
     return final_strip;
 }
 
 char **tokenize(char *command, const char delim[2])
 {
-    char **args = (char **)malloc(256 * sizeof(char *));
+    char **args = (char **)malloc(INPUT_SIZE * sizeof(char *));
     int count = 0;
     char *token = strtok(command, delim);
     while (token != NULL)
@@ -279,36 +289,8 @@ int launch_pipe(char *command)
     history.record[history.historyCount].duration = difftime(
         history.record[history.historyCount].end_time,
         history.record[history.historyCount].start_time);
+    free(cmds);
     return status;
-}
-
-int launch_background(char **args)
-{
-    pid_t pid = fork();
-    if (pid < 0)
-    {
-        perror("fork error");
-        exit(EXIT_FAILURE);
-    }
-
-    if (pid == 0)
-    {
-        // This is the child process
-        // Execute the command in the background
-        int check = execvp(args[0], args);
-        if (check == -1){
-            perror("Error running execvp system call\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-    else
-    {
-        // This is the parent process
-        // printf("Background process started with PID %d\n", pid);
-        history.record[history.historyCount].process_pid = pid;
-    }
-
-    return pid;
 }
 
 void handle_sigchld(int signum)
@@ -319,25 +301,30 @@ void handle_sigchld(int signum)
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
     {
         // printf("Background process with PID %d terminated\n", pid);
-        for (int i = 0; i < history.historyCount; i++){
-            if (history.record[i].process_pid == pid){
-        history.record[i].end_time = time(NULL);
+        for (int i = 0; i < history.historyCount; i++)
+        {
+            if (history.record[i].process_pid == pid)
+            {
+                history.record[i].end_time = time(NULL);
 
-        history.record[i].duration = difftime(
-            history.record[i].end_time,
-            history.record[i].start_time);
+                history.record[i].duration = difftime(
+                    history.record[i].end_time,
+                    history.record[i].start_time);
+                    printf("\n[1]+ Done                    %s\n",history.record[i].command);
+                    break;
             }
         }
     }
 }
 
-bool validate_command(char *command) {
-    if (strchr(command, '\\') || strchr(command, '\"') || strchr(command, '\'')) {
-        return true; 
+bool validate_command(char *command)
+{
+    if (strchr(command, '\\') || strchr(command, '\"') || strchr(command, '\''))
+    {
+        return true;
     }
-    return false; 
+    return false;
 }
-
 
 void shell_loop()
 {
@@ -358,7 +345,7 @@ void shell_loop()
             perror("USER environment variable not declared");
             exit(1);
         }
-        char host[INPUT_SiZE];
+        char host[INPUT_SIZE];
         int hostname = gethostname(host, sizeof(host));
         if (hostname == -1)
         {
@@ -368,7 +355,9 @@ void shell_loop()
         printf("%s@%s~$ ", user, host);
 
         char *command = read_user_input();
-        if (strlen(command) == 0 || strcmp(command , "\n") == 0){
+        if (strlen(command) == 0 || strcmp(command, "\n") == 0)
+        {
+            status = 1;
             continue;
         }
         command = strtok(command, "\n");
@@ -379,14 +368,16 @@ void shell_loop()
             perror("Error in strdup");
             exit(EXIT_FAILURE);
         }
-        if (isInvalidCommand){
+        if (isInvalidCommand)
+        {
+            status = 1;
             strcpy(history.record[history.historyCount].command, tmp);
             history.record[history.historyCount].start_time = time(NULL);
             history.record[history.historyCount].end_time = time(NULL);
             history.record[history.historyCount].duration = difftime(
-                    history.record[history.historyCount].end_time,
-                    history.record[history.historyCount].start_time);
-                history.historyCount++;
+                history.record[history.historyCount].end_time,
+                history.record[history.historyCount].start_time);
+            history.historyCount++;
             printf("Invalid Command : includes quotes/backslach\n");
             continue;
         }
@@ -405,6 +396,7 @@ void shell_loop()
             }
             else
             {
+                status = 1;
                 printf("No command in the history\n");
                 continue;
             }
@@ -423,14 +415,7 @@ void shell_loop()
                 char **args = tokenize(command, " ");
                 strcpy(history.record[history.historyCount].command, tmp);
                 history.record[history.historyCount].start_time = time(NULL);
-                if (bgProcess)
-                {
-                    status = launch_background(args);
-                }
-                else
-                {
-                    status = launch(args);
-                }
+                status = launch(args);
                 history.record[history.historyCount].end_time = time(NULL);
 
                 history.record[history.historyCount].duration = difftime(
