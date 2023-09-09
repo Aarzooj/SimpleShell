@@ -1,3 +1,5 @@
+# Source: https://linuxhint.com/30_bash_script_examples/#t23
+
 #!/bin/bash
 
 echo "This code will read the file"

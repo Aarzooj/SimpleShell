@@ -125,7 +125,7 @@ int create_process_and_run(char **args)
         if (check == -1)
         {
             printf("%s: command not found\n", args[0]);
-            return -1;
+            exit(1);
         }
     }
     else
@@ -236,7 +236,8 @@ char *strip(char *string)
     }
     stripped[len] = '\0';
     char *final_strip = (char *)malloc(INPUT_SIZE);
-    if (final_strip == NULL){
+    if (final_strip == NULL)
+    {
         perror("Memory allocation failed\n");
     }
     memcpy(final_strip, stripped, INPUT_SIZE);
@@ -247,7 +248,8 @@ char *strip(char *string)
 char **tokenize(char *command, const char delim[2])
 {
     char **args = (char **)malloc(INPUT_SIZE * sizeof(char *));
-    if (args == NULL){
+    if (args == NULL)
+    {
         perror("Memory allocation failed\n");
     }
     int count = 0;
@@ -310,7 +312,7 @@ int pipe_process(char **cmds, int pipes)
                 if (dup2(fd[i - 1][0], STDIN_FILENO) == -1)
                 {
                     printf("Pipe %d: Reading failed\n", i - 1);
-                    return -1;
+                    exit(1);
                 }
                 // Closing the used read descriptor
                 close(fd[i - 1][0]);
@@ -321,7 +323,7 @@ int pipe_process(char **cmds, int pipes)
                 if (dup2(fd[i][1], STDOUT_FILENO) == -1)
                 {
                     printf("Pipe %d: Writing failed\n", i);
-                    return -1;
+                    exit(1);
                 }
                 // Closing the used write descriptor
                 close(fd[i][1]);
@@ -330,7 +332,7 @@ int pipe_process(char **cmds, int pipes)
             if (check == -1)
             {
                 printf("%s: command not found\n", args[0]);
-                return -1;
+                exit(1);
             }
         }
         else
