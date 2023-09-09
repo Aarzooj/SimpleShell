@@ -355,7 +355,12 @@ void handle_sigchld(int signum)
                     history.record[i].end_time,
                     history.record[i].start_time);
                 int order = pop(pid);
-                char *tmp = history.record[i].command;
+                char *tmp = strdup(history.record[i].command);
+                if (tmp == NULL)
+                {
+                    perror("Error in strdup");
+                    exit(EXIT_FAILURE);
+                }
                 tmp = strtok(tmp, "&");
                 printf("\n[%d]+ Done                    %s\n", order + 1, tmp);
                 break;
